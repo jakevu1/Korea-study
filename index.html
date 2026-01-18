@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Tiếng Hàn Pro v3.5 - Custom Vocab</title>
+    <style>
+        :root { --primary: #4a90e2; --success: #2ecc71; --error: #e74c3c; --bg: #f0f2f5; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; position: relative; }
+        .home-btn { position: absolute; top: 20px; left: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #bdc3c7; transition: 0.3s; }
+        .home-btn:hover { color: var(--primary); transform: scale(1.1); }
+        .progress-container { width: 100%; height: 8px; background: #eee; border-radius: 4px; margin: 15px 0; overflow: hidden; }
+        #progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+        .stats-bar { display: flex; justify-content: space-between; font-size: 0.85rem; color: #7f8c8d; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 10px; }
+        .word-card { font-size: 3rem; margin: 20px 0; color: var(--dark); font-weight: bold; min-height: 100px; display: flex; align-items: center; justify-content: center; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button { padding: 15px; font-size: 1rem; border: 2px solid #edeff2; border-radius: 12px; background: white; cursor: pointer; transition: 0.2s; color: var(--dark); font-weight: 500; }
+        button:hover:not(:disabled) { border-color: var(--primary); background: #f0f7ff; }
+        button.correct { background: var(--success) !important; color: white; border-color: var(--success); }
+        button.wrong { background: var(--error) !important; color: white; border-color: var(--error); }
+        input[type="text"] { width: 100%; padding: 15px; font-size: 1.2rem; border: 2px solid #ddd; border-radius: 12px; text-align: center; box-sizing: border-box; }
+        .btn-main { background: var(--primary); color: white; border: none; width: 100%; margin-top: 10px; padding: 15px; font-size: 1rem; border-radius: 12px; cursor: pointer; font-weight: bold; }
+        .hidden { display: none; }
+        .badge { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-left: 5px; }
+
+        /* Style bổ sung cho Quản lý từ vựng */
+        .manage-section { margin-top: 20px; border-top: 2px dashed #eee; padding-top: 20px; text-align: left; }
+        .input-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .input-group input { font-size: 0.9rem; padding: 10px; }
+        .vocab-list-container { max-height: 200px; overflow-y: auto; background: #f9f9f9; border-radius: 10px; padding: 10px; margin-top: 10px; }
+        .vocab-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .delete-btn { color: var(--error); cursor: pointer; font-weight: bold; padding: 0 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <button id="global-home-btn" class="home-btn hidden" onclick="goMenu()">🏠</button>
+
+    <div id="setup-area">
+        <h2 style="color: var(--primary); margin-bottom: 25px;">Học Tiếng Hàn Pro</h2>
+        <div style="text-align: left; margin-bottom: 20px;">
+            <label><b>1. Chọn chế độ học:</b></label>
+            <select id="quiz-mode" style="width:100%; padding:12px; margin: 10px 0 20px; border-radius: 8px;">
+                <option value="ko-vi-choice">Hàn ➔ Việt (Trắc nghiệm)</option>
+                <option value="vi-ko-choice">Việt ➔ Hàn (Trắc nghiệm)</option>
+                <option value="vi-ko-input">Việt ➔ Hàn (Luyện gõ)</option>
+            </select>
+            
+            <label><b>2. Bắt đầu:</b></label>
+            <button class="btn-main" onclick="startQuiz(allData)">Học Tất Cả Từ Mới (<span id="total-count">0</span>)</button>
+            <button id="btn-load-saved" class="btn-main" style="background:#e67e22" onclick="loadSavedErrors()">
+                Ôn Lại Từ Hay Sai <span id="saved-count" class="badge">0</span>
+            </button>
+            <button class="btn-main" style="background:#95a5a6; margin-top:30px; font-size: 0.8rem; padding: 8px;" onclick="resetData()">Xóa lịch sử từ sai</button>
+        </div>
+
+        <div class="manage-section">
+            <label><b>3. Quản lý từ vựng của bạn:</b></label>
+            <div class="input-group">
+                <input type="text" id="add-ko" placeholder="Tiếng Hàn">
+                <input type="text" id="add-vi" placeholder="Tiếng Việt">
+            </div>
+            <button class="btn-main" style="background: var(--success); margin-top:0" onclick="handleAddNewWord()">Thêm từ vào bộ nhớ</button>
+            
+            <div class="vocab-list-container">
+                <div id="custom-list-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="quiz-area" class="hidden">
+        <div class="progress-container"><div id="progress-bar"></div></div>
+        <div class="stats-bar">
+            <span>Câu: <b id="current-idx">0</b>/<b id="total-idx">0</b></span>
+            <span>Đúng: <b id="score-count" style="color:var(--success)">0</b></span>
+        </div>
+        <div class="word-card" id="main-word">...</div>
+        <button id="audio-btn" onclick="speakCurrentWord()" style="border:none; color:var(--primary); background:none; cursor:pointer; margin-bottom:15px;">🔊 Nghe phát âm</button>
+        <div id="options-container" class="options-grid"></div>
+        <div id="input-container" class="hidden">
+            <input type="text" id="user-input" placeholder="Gõ tiếng Hàn..." autocomplete="off">
+            <button class="btn-main" style="background:#2c3e50; margin-top:15px;" onclick="checkInputAnswer()">Kiểm tra</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h2 style="color: var(--success)">Hoàn thành!</h2>
+        <p id="summary-text" style="font-size: 1.1rem;"></p>
+        <button class="btn-main" onclick="goMenu()">Quay lại Menu</button>
+    </div>
+</div>
+
+<script>
+    // Danh sách từ mặc định
+    const defaultData = [
+        {ko: "떡", vi: "Bánh gạo"}, {ko: "빵", vi: "Bánh mì"}, {ko: "딸기", vi: "Dâu tây"},
+        {ko: "옷", vi: "Quần áo"}, {ko: "꽃", vi: "Hoa"}, {ko: "생선", vi: "Cá"},
+        {ko: "지갑", vi: "Ví"}, {ko: "발", vi: "Bàn chân"}, {ko: "입", vi: "Miệng"},
+        {ko: "닭", vi: "Con gà"}, {ko: "오이", vi: "Dưa chuột"}, {ko: "우유", vi: "Sữa"},
+        {ko: "바지", vi: "Quần"}, {ko: "모자", vi: "Mũ"}, {ko: "치마", vi: "Váy"},
+        {ko: "사과", vi: "Táo"}, {ko: "고기", vi: "Thịt"}, {ko: "시계", vi: "Đồng hồ"},
+        {ko: "휴지", vi: "Giấy vệ sinh"}, {ko: "돼지", vi: "Con lợn"}, {ko: "포도", vi: "Nho"},
+        {ko: "의자", vi: "Ghế"}, {ko: "피za", vi: "Pizza"}, {ko: "기차", vi: "Tàu hỏa"},
+        {ko: "토끼", vi: "Con thỏ"}, {ko: "한국", vi: "Hàn Quốc"}, {ko: "베트남", vi: "Việt Nam"},
+        {ko: "일본", vi: "Nhật Bản"}, {ko: "미국", vi: "Mỹ"}, {ko: "중국", vi: "Trung Quốc"},
+        {ko: "태국", vi: "Thái Lan"}, {ko: "호주", vi: "Úc"}, {ko: "몽골", vi: "Mông Cổ"},
+        {ko: "인도", vi: "Ấn Độ"}, {ko: "영국", vi: "Anh"}, {ko: "독일", vi: "Đức"},
+        {ko: "프랑스", vi: "Pháp"}, {ko: "은행", vi: "Ngân hàng"}, {ko: "백화점", vi: "Bách hóa"},
+        {ko: "약국", vi: "Hiệu thuốc"}, {ko: "가게", vi: "Cửa hàng"}, {ko: "사무실", vi: "Văn phòng"},
+        {ko: "교실", vi: "Lớp học"}, {ko: "화장실", vi: "Nhà vệ sinh"}, {ko: "휴게실", vi: "Phòng nghỉ"},
+        {ko: "동아리방", vi: "Phòng CLB"}, {ko: "체육관", vi: "Phòng tập"}
+    ];
+
+    let allData = [];
+    let currentList = [], currentIndex = 0, score = 0, mode = '';
+
+    // Khởi tạo ứng dụng
+    initApp();
+
+    function initApp() {
+        // Lấy từ vựng tự thêm từ LocalStorage
+        const customVocab = JSON.parse(localStorage.getItem('custom_vocab')) || [];
+        allData = [...defaultData, ...customVocab];
+        
+        updateSavedCount();
+        renderCustomList();
+        document.getElementById('total-count').innerText = allData.length;
+    }
+
+    function handleAddNewWord() {
+        const koInput = document.getElementById('add-ko');
+        const viInput = document.getElementById('add-vi');
+        const ko = koInput.value.trim();
+        const vi = viInput.value.trim();
+
+        if (ko === "" || vi === "") {
+            alert("Vui lòng nhập đầy đủ từ tiếng Hàn và nghĩa!");
+            return;
+        }
+
+        const customVocab = JSON.parse(localStorage.getItem('custom_vocab')) || [];
+        customVocab.push({ko, vi});
+        localStorage.setItem('custom_vocab', JSON.stringify(customVocab));
+
+        koInput.value = "";
+        viInput.value = "";
+        initApp();
+    }
+
+    function deleteCustomWord(index) {
+        if(confirm("Bạn có chắc muốn xóa từ này khỏi danh sách tự thêm?")) {
+            const customVocab = JSON.parse(localStorage.getItem('custom_vocab')) || [];
+            customVocab.splice(index, 1);
+            localStorage.setItem('custom_vocab', JSON.stringify(customVocab));
+            initApp();
+        }
+    }
+
+    function renderCustomList() {
+        const customVocab = JSON.parse(localStorage.getItem('custom_vocab')) || [];
+        const container = document.getElementById('custom-list-display');
+        container.innerHTML = customVocab.length === 0 ? '<p style="color:#bbb; font-size:0.8rem">Chưa có từ mới nào được thêm.</p>' : '';
+        
+        customVocab.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'vocab-item';
+            div.innerHTML = `<span>${item.ko}: ${item.vi}</span><span class="delete-btn" onclick="deleteCustomWord(${index})">✕</span>`;
+            container.appendChild(div);
+        });
+    }
+
+    function updateSavedCount() {
+        const errors = JSON.parse(localStorage.getItem('korean_errors')) || [];
+        document.getElementById('saved-count').innerText = errors.length;
+        document.getElementById('btn-load-saved').style.display = errors.length > 0 ? 'block' : 'none';
+    }
+
+    function goMenu() {
+        document.getElementById('setup-area').classList.remove('hidden');
+        document.getElementById('quiz-area').classList.add('hidden');
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('global-home-btn').classList.add('hidden');
+        initApp();
+    }
+
+    function startQuiz(list) {
+        if(list.length < 4) {
+            alert("Cần tối thiểu 4 từ để học chế độ trắc nghiệm!");
+            return;
+        }
+        mode = document.getElementById('quiz-mode').value;
+        currentList = [...list].sort(() => Math.random() - 0.5);
+        currentIndex = 0; score = 0;
+        document.getElementById('setup-area').classList.add('hidden');
+        document.getElementById('quiz-area').classList.remove('hidden');
+        document.getElementById('global-home-btn').classList.remove('hidden');
+        document.getElementById('total-idx').innerText = currentList.length;
+        document.getElementById('score-count').innerText = "0";
+        showQuestion();
+    }
+
+    function showQuestion() {
+        if (currentIndex >= currentList.length) return showResult();
+        const word = currentList[currentIndex];
+        document.getElementById('main-word').innerText = mode.startsWith('ko') ? word.ko : word.vi;
+        document.getElementById('current-idx').innerText = currentIndex + 1;
+        document.getElementById('progress-bar').style.width = (currentIndex / currentList.length * 100) + '%';
+        if(mode === 'ko-vi-choice') speak(word.ko);
+        if (mode.endsWith('choice')) { setupChoiceMode(word); } else { setupInputMode(word); }
+    }
+
+    function setupChoiceMode(correctWord) {
+        document.getElementById('options-container').classList.remove('hidden');
+        document.getElementById('input-container').classList.add('hidden');
+        let opts = [correctWord];
+        while(opts.length < 4) {
+            let r = allData[Math.floor(Math.random()*allData.length)];
+            if(!opts.find(x => x.ko === r.ko)) opts.push(r);
+        }
+        opts.sort(() => Math.random() - 0.5);
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+        opts.forEach(o => {
+            const btn = document.createElement('button');
+            btn.innerText = mode === 'vi-ko-choice' ? o.ko : o.vi;
+            btn.onclick = () => {
+                const allBtns = container.querySelectorAll('button');
+                allBtns.forEach(b => b.disabled = true);
+                if(o.ko === correctWord.ko) {
+                    btn.classList.add('correct');
+                    score++;
+                    document.getElementById('score-count').innerText = score;
+                    if(mode === 'vi-ko-choice') speak(o.ko);
+                    setTimeout(() => { currentIndex++; showQuestion(); }, 800);
+                } else {
+                    btn.classList.add('wrong');
+                    saveError(correctWord);
+                    allBtns.forEach(b => {
+                        const targetText = mode === 'vi-ko-choice' ? correctWord.ko : correctWord.vi;
+                        if(b.innerText === targetText) b.classList.add('correct');
+                    });
+                    setTimeout(() => { currentIndex++; showQuestion(); }, 1500);
+                }
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function setupInputMode(correctWord) {
+        document.getElementById('options-container').classList.add('hidden');
+        document.getElementById('input-container').classList.remove('hidden');
+        const input = document.getElementById('user-input');
+        input.value = ''; input.style.borderColor = '#ddd'; input.focus();
+        input.onkeypress = (e) => { if(e.key === 'Enter') checkInputAnswer(); };
+    }
+
+    function checkInputAnswer() {
+        const input = document.getElementById('user-input');
+        const correctWord = currentList[currentIndex];
+        if(input.value.trim() === correctWord.ko) {
+            input.style.borderColor = 'var(--success)';
+            score++;
+            document.getElementById('score-count').innerText = score;
+            speak(correctWord.ko);
+            setTimeout(() => { currentIndex++; showQuestion(); }, 600);
+        } else {
+            input.style.borderColor = 'var(--error)';
+            saveError(correctWord);
+            alert("Sai rồi! Đáp án là: " + correctWord.ko);
+            currentIndex++; showQuestion();
+        }
+    }
+
+    function saveError(word) {
+        let errors = JSON.parse(localStorage.getItem('korean_errors')) || [];
+        if(!errors.find(e => e.ko === word.ko)) {
+            errors.push(word);
+            localStorage.setItem('korean_errors', JSON.stringify(errors));
+        }
+    }
+
+    function loadSavedErrors() {
+        const errors = JSON.parse(localStorage.getItem('korean_errors')) || [];
+        if(errors.length > 0) startQuiz(errors);
+    }
+
+    function resetData() {
+        if(confirm("Xóa danh sách từ sai?")) {
+            localStorage.removeItem('korean_errors');
+            updateSavedCount();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-area').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('summary-text').innerHTML = `Đúng: <b>${score}/${currentList.length}</b> câu.`;
+    }
+
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ko-KR';
+        window.speechSynthesis.speak(msg);
+    }
+
+    function speakCurrentWord() {
+        speak(currentList[currentIndex].ko);
+    }
+</script>
+</body>
+</html>
